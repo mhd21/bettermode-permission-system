@@ -1,0 +1,37 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DATABASE_URL=postgres://bettermode:mypass@db:5432/bettermode
+        - REDIS_URL=redis://redis:6379
+    environment:
+      DATABASE_URL: postgres://bettermode:mypass@db:5432/bettermode
+      REDIS_URL: redis://redis:6379
+    command: >
+      sh -c "npm install &&
+             npx prisma generate &&
+             npx prisma migrate dev &&
+             npm run start"
+    ports:
+      - '3000:3000'
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: citusdata/citus:latest
+    environment:
+      POSTGRES_USER: bettermode
+      POSTGRES_PASSWORD: mypass
+      POSTGRES_DB: bettermode
+    # ports:
+    #   - "5432:5432"
+
+  redis:
+    image: redis:latest
+    # ports:
+    #   - '6379:6379'

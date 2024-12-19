@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @map("id")
+  username  String    @map("username")
+  email     String    @map("email")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  Group                  Group[]
+
+  @@index([username])
+  @@map("users")
+}
+
+model Group {
+  creatorId    String        @map("creator_id") // shard the data by creator
+  id           String        @map("id")
+  name         String        @map("name")
+  
+  createdAt    DateTime      @default(now()) @map("created_at")
+  groupMembers GroupMember[]
+
+  creator User @relation(fields: [creatorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([creatorId,id])
+  @@map("groups")
+}
+
+model Tweet {
+  rootAuthorId String @map("root_author_id")
+  id       String @map("id")
+  
+  authorId String @map("author_id")
+
+  createdAt      DateTime       @default(now()) @map("created_at")
+  content        String         @map("content") @db.Text
+  hashtags       String[]       @map("hashtags")
+  parentTweetId  String?        @map("parent_tweet_id") @db.Text
+
+  category       TweetCategory? @map("category")
+  location       String?        @map("location") @db.Text
+
+  inheritViewPermissions Boolean @default(true) @map("inherit_view_permissions")
+  inheritEditPermissions Boolean @default(true) @map("inherit_edit_permissions")
+  isPublicView           Boolean @default(true) @map("is_public_view")
+  isPublicEdit           Boolean @default(true) @map("is_public_edit")
+
+  // Relations
+
+  parentTweet            Tweet?                   @relation("parent_tweet", fields: [rootAuthorId,parentTweetId], references: [rootAuthorId,id], onDelete: NoAction, onUpdate: NoAction)
+  childTweets            Tweet[]                  @relation("parent_tweet")
+  TweetAppliedPermission TweetAppliedPermission[]
+  TweetPermissions       TweetPermissions[]
+
+  @@id([rootAuthorId,id]) // to shard tweets by author, citus will distribute the data based on this column
+
+
+  @@index([authorId])
+  @@index([createdAt(sort: Desc)])
+  @@index([isPublicEdit])
+  @@index([isPublicView])
+  @@map("tweets")
+}
+
+model TweetPermissions {
+  rootAuthorId   String          @map("root_author_id") // foreign key to tweet table, to shard the data by author, also shard child tweets by parent tweet
+  tweetId    String              @map("tweet_id")
+  
+  type       TweetPermissionType @map("type")
+  typeId     String              @map("type_id")
+  permission TweetPermission     @map("permission")
+
+  tweet Tweet @relation(fields: [tweetId, rootAuthorId], references: [id, rootAuthorId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([rootAuthorId,tweetId, type, typeId, permission])
+  @@map("tweet_permissions")
+}
+
+model TweetAppliedPermission {
+  rootAuthorId   String          @map("root_author_id") // foreign key to tweet table, to shard the data by author
+  tweetId    String          @map("tweet_id")
+  
+  userId     String          @map("user_id")
+  permission TweetPermission @map("permission")
+
+  // Relations
+  tweet Tweet @relation(fields: [rootAuthorId,tweetId ], references: [rootAuthorId,id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([rootAuthorId,tweetId, userId, permission])
+  @@index([permission])
+  @@map("tweet_applied_permissions")
+}
+
+model GroupMember {
+  groupCreatorId String     @map("group_creator_id") // shard the data by creator
+  groupId        String     @map("group_id")
+  
+  memberType     MemberType @map("member_type")
+  memberId       String     @map("member_id")
+
+  // Relations
+  group Group @relation(fields: [groupCreatorId,groupId], references: [creatorId,id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([groupCreatorId,groupId, memberId, memberType])
+  @@map("group_members")
+}
+
+enum MemberType {
+  USER  @map("user")
+  GROUP @map("group")
+
+  @@map("member_type")
+}
+
+enum TweetCategory {
+  SPORT   @map("sport")
+  FINANCE @map("finance")
+  TECH    @map("tech")
+  NEWS    @map("news")
+
+  @@map("tweet_category")
+}
+
+enum TweetPermission {
+  CAN_VIEW @map("can_view")
+  CAN_EDIT @map("can_edit")
+
+  @@map("tweet_permission")
+}
+
+enum TweetPermissionType {
+  USER  @map("user")
+  GROUP @map("group")
+
+  @@map("tweet_permission_type")
+}
