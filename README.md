@@ -147,7 +147,7 @@ project-root/
    Graph databases like Dgraph were considered for their natural ability to handle relationships and permissions. However, concerns about maturity, tooling, and ecosystem reliability led to the choice of PostgreSQL with the Citus extension.
 
 2. **High Fan-Out Databases**  
-   ScyllaDB was evaluated for its ability to handle high-volume data with its efficient sharding mechanism. While attractive for handling large datasets, PostgreSQL was preferred for its maturity, tooling, and widespread support.
+   ScyllaDB was evaluated for its ability to handle high-volume data with its efficient sharding mechanism. While attractive for handling large datasets, PostgreSQL was preferred for its maturity, tooling, and widespread support. However, a hybrid solution using both PostgreSQL and ScyllaDB is also feasible, leveraging PostgreSQL for core transactional data and ScyllaDB for high-throughput, low-latency workloads.
 
 3. **CQRS (Command Query Responsibility Segregation)**  
    Separating read and write operations was considered to optimize for complex queries and operations. While not implemented, this approach could be combined with event-driven updates for further scalability.
